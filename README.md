@@ -44,7 +44,7 @@ Kemudian anda diminta untuk mendesain arsitektur cloud yang sesuai dengan kebutu
 ## Rancangan
 Pada final project saya menggunakan 3 VM dengan desain dan spesifikasi sebagai berikut
 
-![alt text](Archi.png)
+
 
 ### Tabel Harga
 Total saya menggunakan 3 VM. 2 VM sebagai Backend dan 1 VM sebagai Loadbalancer. Berikut untuk spesifikasi VM yang saya gunakan.
@@ -56,7 +56,7 @@ Total saya menggunakan 3 VM. 2 VM sebagai Backend dan 1 VM sebagai Loadbalancer.
 ||Total|||||15US$| 
 
 # Implementasi
-Buat vagrantfile untuk ketiga
+### Buat vagrantfile untuk ketiga VM
 ```Vagrant.configure("2") do |config|
   config.ssh.insert_key = false
 
@@ -121,7 +121,9 @@ Buat vagrantfile untuk ketiga
 end
 ```
 
-Buat file sentiment-analysis.py
+lalu ```vagrant up```
+
+### Buat file sentiment-analysis.py
 ```
 from flask import Flask, request, jsonify
 from flask_pymongo import PyMongo
@@ -163,5 +165,34 @@ def delete_history():
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
 ```
+
+### Konfigurasi HAProxy pada Loadbalancer
+```vagrant ssh loadbalancer``` lalu ```sudo nano /etc/haproxy/haproxy.cfg```
+Tambahkan line berikut pada file :
+```
+frontend my_frontend
+    bind *:80
+    default_backend my_backend
+
+backend my_backend
+    balance leastconn
+    server backend1 192.168.56.11:5000
+    server backend2 192.168.56.12:5000
+```
+
+### Pengetesan pada sentiment-analysis.py
+Jalankan sentiment-analysis.py pada salah satu backend (saya memilih backend2 sebagai contoh), lalu jalankan command berikut pada host
+
+```curl -X POST http://192.168.56.12:5000/analyze -H "Content-Type: application/json" -d '{"text": "Great"}'```
+
+"Great" dapat diganti dengan kata kata lainnya untuk tujuan pengetesan
+
+![alt text](Sentiment-Test.png)
+
+Berikut history dari pengetesan yang saya lakukan yang didapat menggunakan
+```curl http://192.168.56.12:5000/history```
+![alt text](Sentiment-History.png)
+
+Hal ini saya lakukan karena ada kesalahan yang membuat Loadbalancer tidak terkoneksi pada Backend
 
 Video Demo : https://youtu.be/cLTVy1vb-uQ
